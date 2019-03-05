@@ -114,7 +114,7 @@ func (st *Storage) Write(content []byte) (string, int, int, int) {
 }
 
 // AddFile 添加文件
-func (st *Storage) AddFile(r io.Reader, fileName string) {
+func (st *Storage) AddFile(r io.Reader, fileName string) string {
 	buf := bytes.NewBuffer([]byte{})
 	n, err := buf.ReadFrom(r)
 	if err != nil {
@@ -124,4 +124,14 @@ func (st *Storage) AddFile(r io.Reader, fileName string) {
 	fileID, blockID, offset, size := st.Write(buf.Bytes())
 	index := NewIndex(fileID, blockID, offset, size)
 	st.Indexes.AddIndex(index)
+	return fileID
+}
+
+// FindByFileID 查找文件
+func (st *Storage) FindByFileID(fileID string) *Index {
+	index := st.Indexes.FindIndex(fileID)
+	if index == nil {
+		return nil
+	}
+	return index
 }

@@ -2,10 +2,10 @@ package storage
 
 // Index 索引
 type Index struct {
-	FileID  [32]byte
-	BlockID int8
-	Offset  int32
-	Size    int32
+	FileID  [32]byte // 32 byte
+	Offset  int64    // 8 byte
+	Size    int64    // 8 byte
+	BlockID int64    // 8 byte
 }
 
 // NewIndex 创建索引
@@ -17,9 +17,9 @@ func NewIndex(fileID string, blockID int, offset int, size int) *Index {
 	copy(fID[:], fileID)
 	index := Index{
 		FileID:  fID,
-		BlockID: int8(blockID),
-		Offset:  int32(offset),
-		Size:    int32(size),
+		BlockID: int64(blockID),
+		Offset:  int64(offset),
+		Size:    int64(size),
 	}
 	return &index
 }
