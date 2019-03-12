@@ -1,5 +1,5 @@
 # Kart
-Kart is a database written by Golang.
+Kart 是一个文件存储系统
 
 ## 存储结构
 ![存储结构](./存储结构.png)
@@ -9,7 +9,11 @@ Kart is a database written by Golang.
 2. 添加文件时，保存文件并添加索引
 3. 索引完全载入内存
 
+## API
+1. 上传文件
+2. 通过 ID 获取文件
+
 ## Todo
-1. 索引文件可能过大，需要支持在磁盘上的索引文件中查找数据
-2. 支持结构化数据的存储
-    每个 db 一个文件夹，每个 table 一个文件
+1. 图片裁剪
+2. 从配置文件读取配置
+3. 不再默认创建多个 Block，不够时再去创建

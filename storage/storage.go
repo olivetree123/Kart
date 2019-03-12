@@ -7,6 +7,7 @@ import (
 	"kart/utils"
 	"os"
 	"path/filepath"
+	// "syscall"
 )
 
 // Storage 存储
@@ -71,7 +72,7 @@ func (st *Storage) AddBlock(id int, filePath string, maxSize int) {
 func (st *Storage) FindSection(length int) (int, *Section) {
 	for i, section := range st.FreeList {
 		if section.Size >= length {
-			fmt.Println("find, block id = ", section.BlockID, "free size = ", section.Size)
+			// fmt.Println("find, block id = ", section.BlockID, "free size = ", section.Size)
 			return i, section
 		}
 	}
@@ -93,8 +94,18 @@ func (st *Storage) FindBlockByID(id int) *Block {
 	return nil
 }
 
+func (st *Storage) Read(blockID int64, offset int64, size int64) []byte {
+	content := make([]byte, size)
+	block := st.FindBlockByID(int(blockID))
+	_, err := block.FileHandler.ReadAt(content, offset)
+	if err != nil {
+		panic(err)
+	}
+	return content
+}
+
 // Write 将内容写到文件中
-func (st *Storage) Write(content []byte) (string, int, int, int) {
+func (st *Storage) Write(content []byte) (int, int, int) {
 	length := len(content)
 	i, section := st.FindSection(length)
 	if i < 0 {
@@ -110,18 +121,24 @@ func (st *Storage) Write(content []byte) (string, int, int, int) {
 	if section.Size == 0 {
 		st.RemoveSection(i)
 	}
-	return utils.ContentMd5(content), block.ID, section.Offset - length, length
+	return block.ID, section.Offset - length, length
 }
 
 // AddFile 添加文件
 func (st *Storage) AddFile(r io.Reader, fileName string) string {
 	buf := bytes.NewBuffer([]byte{})
-	n, err := buf.ReadFrom(r)
+	_, err := buf.ReadFrom(r)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("read ", n, "bytes")
-	fileID, blockID, offset, size := st.Write(buf.Bytes())
+	contentBytes := buf.Bytes()
+	fileID := utils.ContentMd5(contentBytes)
+	idx := st.Indexes.FindIndex(fileID)
+	if idx != nil {
+		fmt.Println("File already exists.")
+		return string(idx.FileID[:])
+	}
+	blockID, offset, size := st.Write(contentBytes)
 	index := NewIndex(fileID, blockID, offset, size)
 	st.Indexes.AddIndex(index)
 	return fileID
