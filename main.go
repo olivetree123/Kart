@@ -5,21 +5,13 @@ import (
 	// "kart/storage"
 	// "os"
 	"github.com/gorilla/mux"
-	"github.com/spf13/viper"
+	// "github.com/spf13/viper"
+	"kart/config"
 	"kart/handlers"
 	"log"
 	"net/http"
 	"time"
 )
-
-func init() {
-	viper.SetConfigName("kart")
-	viper.AddConfigPath("./")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-}
 
 func main() {
 	// st := storage.NewStorage()
@@ -46,8 +38,8 @@ func main() {
 	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")
 	// host := "0.0.0.0"
 	// port := 8000
-	host := viper.GetString("Host")
-	port := viper.GetInt("Port")
+	host := config.Config.GetString("Host")
+	port := config.Config.GetInt("Port")
 	fmt.Println("Listen ", host, " on ", port)
 	server := &http.Server{
 		Handler:      router,
