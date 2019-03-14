@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	// "syscall"
+	"github.com/spf13/viper"
 )
 
 // Storage 存储
@@ -22,7 +23,7 @@ type Storage struct {
 // NewStorage 创建存储
 func NewStorage() *Storage {
 	st := &Storage{
-		DirPath:   "/data/kart",
+		DirPath:   viper.GetString("FilePath"),
 		BlockNum:  4,
 		BlockList: nil,
 		FreeList:  nil,

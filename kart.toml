@@ -6,6 +6,8 @@ Port = 8000
 # FilePath 为存储文件路径
 FilePath = "/data/kart"
 
+IndexFileName = "kart.idx"
+
 # BlockMaxSize 单位 MB，默认为5GB
 BlockMaxSize = 5120
 

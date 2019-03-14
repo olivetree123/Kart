@@ -3,7 +3,9 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/spf13/viper"
 	"os"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -59,7 +61,8 @@ func (tree *IndexTree) LoadIndex() {
 
 // NewIndexTree 创建索引树
 func NewIndexTree() *IndexTree {
-	indexFilePath := "/data/kart/kart.idx"
+	// indexFilePath := "/data/kart/kart.idx"
+	indexFilePath := filepath.Join(viper.GetString("FilePath"), viper.GetString("IndexFileName"))
 	f, err := os.OpenFile(indexFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic(err)
