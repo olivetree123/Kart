@@ -3,11 +3,18 @@
 Host = "0.0.0.0"
 Port = 8000
 
+TokenScheme = "Token"
+
 # FilePath 为存储文件路径
 FilePath = "/data/kart"
 
+UserFileName = "user.db"
+BucketFileName = "bucket.db"
 IndexFileName = "kart.idx"
 
 # BlockMaxSize 单位 MB，默认为5GB
 BlockMaxSize = 5120
 
+
+
+DefaultBucket = "default"

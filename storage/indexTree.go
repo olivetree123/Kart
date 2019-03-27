@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"kart/config"
 	"os"
 	"path/filepath"
@@ -13,18 +14,18 @@ import (
 type IndexTree struct {
 	Filepath    string
 	FileHandler *os.File
-	IndexList   map[string]*Index
+	IndexMap    map[string]*Index
 }
 
 // AddIndex 添加索引，并将索引写入文件
 func (tree *IndexTree) AddIndex(index *Index) {
 	binary.Write(tree.FileHandler, binary.LittleEndian, index)
-	tree.IndexList[string(index.FileID[:])] = index
+	tree.IndexMap[string(index.FileID[:])] = index
 }
 
 // FindIndex 查找索引
 func (tree *IndexTree) FindIndex(fileID string) *Index {
-	if index, found := tree.IndexList[fileID]; found {
+	if index, found := tree.IndexMap[fileID]; found {
 		return index
 	}
 	return nil
@@ -40,8 +41,10 @@ func (tree *IndexTree) LoadIndex() {
 		return
 	}
 	length := unsafe.Sizeof(Index{})
+	fmt.Println("length = ", length)
 	var offset int64
 	for size > 0 {
+		fmt.Println("size = ", size)
 		indexBytes := make([]byte, length)
 		_, err := tree.FileHandler.ReadAt(indexBytes, offset)
 		if err != nil {
@@ -55,7 +58,7 @@ func (tree *IndexTree) LoadIndex() {
 		}
 		size -= int64(length)
 		offset += int64(length)
-		tree.IndexList[string(index.FileID[:])] = &index
+		tree.IndexMap[string(index.FileID[:])] = &index
 	}
 }
 
@@ -70,7 +73,7 @@ func NewIndexTree() *IndexTree {
 	tree := &IndexTree{
 		Filepath:    indexFilePath,
 		FileHandler: f,
-		IndexList:   make(map[string]*Index),
+		IndexMap:    make(map[string]*Index),
 	}
 	tree.LoadIndex()
 	return tree

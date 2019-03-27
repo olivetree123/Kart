@@ -16,6 +16,9 @@ import (
 
 // AddFileHandler 上传文件
 func AddFileHandler(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	fmt.Println("token = ", token)
+	bucket := r.Form.Get("bucket")
 	fileObj, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		panic(err)
@@ -26,7 +29,7 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	// 	panic(err)
 	// }
 	fmt.Println(fileHeader.Filename)
-	fileID := global.StoreHandler.AddFile(fileObj, fileHeader.Filename)
+	fileID := global.StoreHandler.AddFile(fileObj, fileHeader.Filename, bucket)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Success to Add File, fileID = %s.", fileID)
 }

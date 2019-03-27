@@ -6,6 +6,7 @@ import (
 	// "os"
 	"github.com/gorilla/mux"
 	// "github.com/spf13/viper"
+	"kart/auth"
 	"kart/config"
 	"kart/handlers"
 	"log"
@@ -32,8 +33,21 @@ func main() {
 	// 	fmt.Println("index found, ", index.BlockID, index.Offset, index.Size)
 	// }
 	router := mux.NewRouter()
+	// API 创建用户
+	router.HandleFunc("/kart/user", handlers.AddUserHandler).Methods("post")
+	// API 登陆
+	router.HandleFunc("/kart/login", handlers.LoginHandler).Methods("post")
+	// API 创建 Bucket
+	// router.HandleFunc("/kart/bucket", handlers.AddBucketHandler).Methods("post")
+	router.Handle(
+		"/kart/bucket",
+		auth.Middleware(http.HandlerFunc(handlers.AddBucketHandler)),
+	).Methods("post")
 	// API 上传文件
-	router.HandleFunc("/kart/file", handlers.AddFileHandler).Methods("post")
+	router.Handle(
+		"/kart/file",
+		auth.Middleware(http.HandlerFunc(handlers.AddFileHandler)),
+	).Methods("post")
 	// API 获取文件
 	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")
 	// host := "0.0.0.0"

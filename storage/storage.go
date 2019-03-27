@@ -19,6 +19,8 @@ type Storage struct {
 	BlockList    []*Block
 	FreeList     []*Section
 	Indexes      *IndexTree
+	Buckets      *BucketTree
+	Users        *UserTree
 	BlockMaxSize int
 }
 
@@ -29,7 +31,9 @@ func NewStorage() *Storage {
 		// BlockNum:     4,
 		BlockList:    nil,
 		FreeList:     nil,
+		Users:        NewUserTree(),
 		Indexes:      NewIndexTree(),
+		Buckets:      NewBucketTree(),
 		BlockMaxSize: config.Config.GetInt("BlockMaxSize") * 1024 * 1024,
 	}
 	st.Init()
@@ -142,12 +146,13 @@ func (st *Storage) Write(content []byte) (int, int, int) {
 }
 
 // AddFile 添加文件
-func (st *Storage) AddFile(r io.Reader, fileName string) string {
+func (st *Storage) AddFile(r io.Reader, fileName string, bucketName string) string {
 	buf := bytes.NewBuffer([]byte{})
 	_, err := buf.ReadFrom(r)
 	if err != nil {
 		panic(err)
 	}
+	bucket := st.Buckets.FindBucketByName(bucketName)
 	contentBytes := buf.Bytes()
 	fileID := utils.ContentMd5(contentBytes)
 	idx := st.Indexes.FindIndex(fileID)
@@ -156,9 +161,17 @@ func (st *Storage) AddFile(r io.Reader, fileName string) string {
 		return string(idx.FileID[:])
 	}
 	blockID, offset, size := st.Write(contentBytes)
-	index := NewIndex(fileID, blockID, offset, size)
+	index := NewIndex(fileID, string(bucket.ID[:]), blockID, offset, size)
 	st.Indexes.AddIndex(index)
 	return fileID
+}
+
+// AddBucket 添加 Bucket
+func (st *Storage) AddBucket(userID string, name string, public bool) *Bucket {
+	var userIDBytes [32]byte
+	copy(userIDBytes[:], userID)
+	bucket := st.Buckets.AddBucket(userIDBytes, name, public)
+	return bucket
 }
 
 // FindByFileID 查找文件
@@ -168,4 +181,16 @@ func (st *Storage) FindByFileID(fileID string) *Index {
 		return nil
 	}
 	return index
+}
+
+// AddUser 添加用户
+func (st *Storage) AddUser(email string, password string) *User {
+	user := st.Users.AddUser(email, password)
+	return user
+}
+
+// VerifyUser 验证用户
+func (st *Storage) VerifyUser(email string, password string) *User {
+	user := st.Users.VerifyUser(email, password)
+	return user
 }
