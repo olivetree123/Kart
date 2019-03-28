@@ -17,8 +17,10 @@ type BucketTree struct {
 }
 
 // AddBucket 添加索引，并将索引写入文件
-func (tree *BucketTree) AddBucket(userID [32]byte, name string, public bool) *Bucket {
-	bucket := NewBucket(userID, name, public)
+func (tree *BucketTree) AddBucket(userID string, name string, public bool) *Bucket {
+	var userIDBytes [32]byte
+	copy(userIDBytes[:], userID)
+	bucket := NewBucket(userIDBytes, name, public)
 	binary.Write(tree.FileHandler, binary.LittleEndian, bucket)
 	tree.BucketMap[string(bucket.ID[:])] = bucket
 	return bucket

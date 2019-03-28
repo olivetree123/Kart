@@ -1,4 +1,4 @@
-package auth
+package middleware
 
 import (
 	"kart/config"
@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Middleware 认证中间件
-func Middleware(h http.Handler) http.Handler {
+// Auth 认证中间件
+func Auth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		rs := strings.Split(auth, " ")
@@ -16,6 +16,8 @@ func Middleware(h http.Handler) http.Handler {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
+		user := global.GetToken(rs[1])
+		r.Header.Set("userID", user.ID)
 		h.ServeHTTP(w, r)
 	})
 }

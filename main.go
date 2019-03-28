@@ -6,9 +6,9 @@ import (
 	// "os"
 	"github.com/gorilla/mux"
 	// "github.com/spf13/viper"
-	"kart/auth"
 	"kart/config"
 	"kart/handlers"
+	"kart/middleware"
 	"log"
 	"net/http"
 	"time"
@@ -41,12 +41,12 @@ func main() {
 	// router.HandleFunc("/kart/bucket", handlers.AddBucketHandler).Methods("post")
 	router.Handle(
 		"/kart/bucket",
-		auth.Middleware(http.HandlerFunc(handlers.AddBucketHandler)),
+		middleware.Auth(http.HandlerFunc(handlers.AddBucketHandler)),
 	).Methods("post")
 	// API 上传文件
 	router.Handle(
 		"/kart/file",
-		auth.Middleware(http.HandlerFunc(handlers.AddFileHandler)),
+		middleware.Auth(http.HandlerFunc(handlers.AddFileHandler)),
 	).Methods("post")
 	// API 获取文件
 	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")

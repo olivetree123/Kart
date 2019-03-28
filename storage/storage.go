@@ -168,9 +168,7 @@ func (st *Storage) AddFile(r io.Reader, fileName string, bucketName string) stri
 
 // AddBucket 添加 Bucket
 func (st *Storage) AddBucket(userID string, name string, public bool) *Bucket {
-	var userIDBytes [32]byte
-	copy(userIDBytes[:], userID)
-	bucket := st.Buckets.AddBucket(userIDBytes, name, public)
+	bucket := st.Buckets.AddBucket(userID, name, public)
 	return bucket
 }
 
