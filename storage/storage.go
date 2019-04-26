@@ -18,9 +18,10 @@ type Storage struct {
 	// BlockNum     int
 	BlockList    []*Block
 	FreeList     []*Section
-	Indexes      *IndexTree
-	Buckets      *BucketTree
-	Users        *UserTree
+	Indexes      *IndexDB
+	Buckets      *BucketDB
+	Users        *UserDB
+	UserAndFiles *UserAndFileDB
 	BlockMaxSize int
 }
 
@@ -31,9 +32,10 @@ func NewStorage() *Storage {
 		// BlockNum:     4,
 		BlockList:    nil,
 		FreeList:     nil,
-		Users:        NewUserTree(),
-		Indexes:      NewIndexTree(),
-		Buckets:      NewBucketTree(),
+		Users:        NewUserDB(),
+		Indexes:      NewIndexDB(),
+		Buckets:      NewBucketDB(),
+		UserAndFiles: NewUserAndFileDB(),
 		BlockMaxSize: config.Config.GetInt("BlockMaxSize") * 1024 * 1024,
 	}
 	st.Init()
@@ -111,6 +113,7 @@ func (st *Storage) FindBlockByID(id int) *Block {
 func (st *Storage) Read(blockID int64, offset int64, size int64) []byte {
 	content := make([]byte, size)
 	block := st.FindBlockByID(int(blockID))
+	fmt.Println("offset = ", offset)
 	_, err := block.FileHandler.ReadAt(content, offset)
 	if err != nil {
 		panic(err)
@@ -132,6 +135,8 @@ func (st *Storage) Write(content []byte) (int, int, int) {
 			panic("未知错误")
 		}
 	}
+	fmt.Println("i = ", i)
+	fmt.Println("blockID = ", section.BlockID)
 	block := st.FindBlockByID(section.BlockID)
 	_, err := block.FileHandler.WriteAt(content, int64(section.Offset))
 	if err != nil {
@@ -146,23 +151,33 @@ func (st *Storage) Write(content []byte) (int, int, int) {
 }
 
 // AddFile 添加文件
-func (st *Storage) AddFile(r io.Reader, fileName string, bucketName string) string {
+func (st *Storage) AddFile(userID string, r io.Reader, fileName string, bucketName string) string {
 	buf := bytes.NewBuffer([]byte{})
 	_, err := buf.ReadFrom(r)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("bucketName = ", bucketName)
 	bucket := st.Buckets.FindBucketByName(bucketName)
+	if bucket == nil {
+		return ""
+	}
+	fmt.Println("bucket = ", bucket)
 	contentBytes := buf.Bytes()
 	fileID := utils.ContentMd5(contentBytes)
 	idx := st.Indexes.FindIndex(fileID)
 	if idx != nil {
 		fmt.Println("File already exists.")
-		return string(idx.FileID[:])
+		return utils.SliceToString(idx.ID[:])
 	}
 	blockID, offset, size := st.Write(contentBytes)
+	fmt.Println(fileID)
+	fmt.Println(blockID, offset, size)
+	fmt.Println(string(bucket.ID[:]))
 	index := NewIndex(fileID, string(bucket.ID[:]), blockID, offset, size)
 	st.Indexes.AddIndex(index)
+	uf := NewUserAndFile(userID, fileID, fileName)
+	st.UserAndFiles.Add(uf)
 	return fileID
 }
 
@@ -170,6 +185,18 @@ func (st *Storage) AddFile(r io.Reader, fileName string, bucketName string) stri
 func (st *Storage) AddBucket(userID string, name string, public bool) *Bucket {
 	bucket := st.Buckets.AddBucket(userID, name, public)
 	return bucket
+}
+
+// ListBucket Bucket列表
+func (st *Storage) ListBucket(userID string) []*Bucket {
+	buckets := st.Buckets.ListBucket(userID)
+	return buckets
+}
+
+// ListByBucket 文件列表
+func (st *Storage) ListByBucket(bucketID string) []*Index {
+	files := st.Indexes.ListByBucket(bucketID)
+	return files
 }
 
 // FindByFileID 查找文件
@@ -191,4 +218,13 @@ func (st *Storage) AddUser(email string, password string) *User {
 func (st *Storage) VerifyUser(email string, password string) *User {
 	user := st.Users.VerifyUser(email, password)
 	return user
+}
+
+func (st *Storage) GetUserFileInfo(fileID string) *UserAndFile {
+	uf := st.UserAndFiles.FindByFileID(fileID)
+	return uf
+}
+
+func (st *Storage) CheckBucketPermission(userID string, bucketID string) bool {
+	return st.Buckets.CheckPermission(userID, bucketID)
 }

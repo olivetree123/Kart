@@ -3,40 +3,68 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"kart/config"
+	"kart/utils"
 	"os"
 	"path/filepath"
 	"unsafe"
 )
 
-// BucketTree 文件夹🌲
-type BucketTree struct {
+// BucketDB 文件夹存储
+type BucketDB struct {
 	Filepath    string
 	FileHandler *os.File
 	BucketMap   map[string]*Bucket
 }
 
 // AddBucket 添加索引，并将索引写入文件
-func (tree *BucketTree) AddBucket(userID string, name string, public bool) *Bucket {
+func (tree *BucketDB) AddBucket(userID string, name string, public bool) *Bucket {
 	var userIDBytes [32]byte
 	copy(userIDBytes[:], userID)
 	bucket := NewBucket(userIDBytes, name, public)
-	binary.Write(tree.FileHandler, binary.LittleEndian, bucket)
-	tree.BucketMap[string(bucket.ID[:])] = bucket
+	err := binary.Write(tree.FileHandler, binary.LittleEndian, bucket)
+	if err != nil {
+		panic(err)
+	}
+	tree.BucketMap[utils.SliceToString(bucket.ID[:])] = bucket
 	return bucket
 }
 
+// ListBucket Bucket列表
+func (tree *BucketDB) ListBucket(userID string) []*Bucket {
+	var rs []*Bucket
+	for _, bucket := range tree.BucketMap {
+		if utils.SliceToString(bucket.UserID[:]) == userID {
+			rs = append(rs, bucket)
+		}
+	}
+	return rs
+}
+
 // FindBucketByName 查找 bucket
-func (tree *BucketTree) FindBucketByName(name string) *Bucket {
-	if bucket, found := tree.BucketMap[name]; found {
-		return bucket
+func (tree *BucketDB) FindBucketByName(name string) *Bucket {
+	for _, bucket := range tree.BucketMap {
+		if utils.SliceToString(bucket.Name[:]) == name {
+			return bucket
+		}
 	}
 	return nil
 }
 
+// CheckPermission 检查用户是否有访问该 bucket 的权限
+func (tree *BucketDB) CheckPermission(userID string, bucketID string) bool {
+	if bucket, found := tree.BucketMap[bucketID]; found {
+		if utils.SliceToString(bucket.UserID[:]) == userID {
+			return true
+		}
+	}
+	return false
+}
+
 // LoadBucket 加载已有的索引文件
-func (tree *BucketTree) LoadBucket() {
-	size, err := tree.FileHandler.Seek(0, os.SEEK_END)
+func (tree *BucketDB) LoadBucket() {
+	size, err := tree.FileHandler.Seek(0, io.SeekEnd)
 	if err != nil {
 		panic(err)
 	}
@@ -63,14 +91,14 @@ func (tree *BucketTree) LoadBucket() {
 	}
 }
 
-// NewBucketTree 创建索引树
-func NewBucketTree() *BucketTree {
+// NewBucketDB 创建索引树
+func NewBucketDB() *BucketDB {
 	bucketFilePath := filepath.Join(config.Config.GetString("FilePath"), config.Config.GetString("BucketFileName"))
 	f, err := os.OpenFile(bucketFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic(err)
 	}
-	tree := &BucketTree{
+	tree := &BucketDB{
 		Filepath:    bucketFilePath,
 		FileHandler: f,
 		BucketMap:   make(map[string]*Bucket),

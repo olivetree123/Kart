@@ -1,8 +1,10 @@
 package storage
 
+// 缺少：文件名称、上传时间、更新时间、访问次数
+
 // Index 索引
 type Index struct {
-	FileID   [32]byte // 32 byte
+	ID       [32]byte // 32 byte
 	BucketID [32]byte
 	Offset   int64 // 8 byte
 	Size     int64 // 8 byte
@@ -17,12 +19,12 @@ func NewIndex(fileID string, bucketID string, blockID int, offset int, size int)
 	var fID, bID [32]byte
 	copy(fID[:], fileID)
 	copy(bID[:], bucketID)
-	index := Index{
-		FileID:   fID,
+	index := &Index{
+		ID:       fID,
 		BucketID: bID,
 		BlockID:  int64(blockID),
 		Offset:   int64(offset),
 		Size:     int64(size),
 	}
-	return &index
+	return index
 }

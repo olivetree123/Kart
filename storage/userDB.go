@@ -3,32 +3,36 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"kart/config"
 	"os"
 	"path/filepath"
 	"unsafe"
 )
 
-// UserTree 文件夹🌲
-type UserTree struct {
+// UserDB 用户存储
+type UserDB struct {
 	Filepath    string
 	FileHandler *os.File
 	UserMap     map[string]*User
 }
 
 // AddUser 添加用户
-func (tree *UserTree) AddUser(email string, password string) *User {
+func (tree *UserDB) AddUser(email string, password string) *User {
 	if _, found := tree.UserMap[email]; found {
 		return nil
 	}
 	user := NewUser(email, password)
-	binary.Write(tree.FileHandler, binary.LittleEndian, user)
+	err := binary.Write(tree.FileHandler, binary.LittleEndian, user)
+	if err != nil {
+		panic(err)
+	}
 	tree.UserMap[email] = user
 	return user
 }
 
 // VerifyUser 验证用户
-func (tree *UserTree) VerifyUser(email string, password string) *User {
+func (tree *UserDB) VerifyUser(email string, password string) *User {
 	if user, found := tree.UserMap[email]; found {
 		return user
 	}
@@ -36,8 +40,8 @@ func (tree *UserTree) VerifyUser(email string, password string) *User {
 }
 
 // LoadUser 加载已有的索引文件
-func (tree *UserTree) LoadUser() {
-	size, err := tree.FileHandler.Seek(0, os.SEEK_END)
+func (tree *UserDB) LoadUser() {
+	size, err := tree.FileHandler.Seek(0, io.SeekEnd)
 	if err != nil {
 		panic(err)
 	}
@@ -64,14 +68,14 @@ func (tree *UserTree) LoadUser() {
 	}
 }
 
-// NewUserTree 创建索引树
-func NewUserTree() *UserTree {
+// NewUserDB 创建索引树
+func NewUserDB() *UserDB {
 	userFileName := filepath.Join(config.Config.GetString("FilePath"), config.Config.GetString("UserFileName"))
 	f, err := os.OpenFile(userFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
 		panic(err)
 	}
-	tree := &UserTree{
+	tree := &UserDB{
 		Filepath:    userFileName,
 		FileHandler: f,
 		UserMap:     make(map[string]*User),

@@ -43,11 +43,23 @@ func main() {
 		"/kart/bucket",
 		middleware.Auth(http.HandlerFunc(handlers.AddBucketHandler)),
 	).Methods("post")
+	// API 获取 Bucket 列表
+	router.Handle(
+		"/kart/buckets",
+		middleware.Auth(http.HandlerFunc(handlers.ListBucketHandler)),
+	).Methods("get")
+	//router.HandleFunc("/kart/buckets", handlers.ListBucketHandler).Methods("get")
 	// API 上传文件
 	router.Handle(
 		"/kart/file",
 		middleware.Auth(http.HandlerFunc(handlers.AddFileHandler)),
 	).Methods("post")
+	// API 获取文件列表
+	router.Handle(
+		"/kart/files/{bucketID}",
+		middleware.Auth(http.HandlerFunc(handlers.ListFileHandler)),
+	).Methods("get")
+	//router.HandleFunc("/kart/files", handlers.ListFileHandler).Methods("get")
 	// API 获取文件
 	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")
 	// host := "0.0.0.0"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/nfnt/resize"
+	"kart/utils"
 	// "golang.org/x/image/bmp"
 	"image/gif"
 	"image/jpeg"
@@ -16,9 +17,7 @@ import (
 
 // AddFileHandler 上传文件
 func AddFileHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	fmt.Println("token = ", token)
-	bucket := r.Form.Get("bucket")
+	bucket := r.FormValue("bucket")
 	fileObj, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		panic(err)
@@ -28,10 +27,41 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	// 	fmt.Println("EEEEEEEEE")
 	// 	panic(err)
 	// }
+	userID := r.Header.Get("userID")
+	fmt.Println("userID = ", userID)
+	fmt.Println("bucket = ", bucket)
 	fmt.Println(fileHeader.Filename)
-	fileID := global.StoreHandler.AddFile(fileObj, fileHeader.Filename, bucket)
+	fileID := global.StoreHandler.AddFile(userID, fileObj, fileHeader.Filename, bucket)
 	w.WriteHeader(http.StatusOK)
+	if fileID == "" {
+		fmt.Fprintf(w, "Failed to Add File.")
+		return
+	}
 	fmt.Fprintf(w, "Success to Add File, fileID = %s.", fileID)
+}
+
+// ListFileHandler 获取文件列表
+func ListFileHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("userID")
+	vars := mux.Vars(r)
+	bucketID := vars["bucketID"]
+	// 先要检查这个 bucket 是不是属于该用户
+	isEnable := global.StoreHandler.CheckBucketPermission(userID, bucketID)
+	if !isEnable {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "You are not permitted to access this bucket.")
+		return
+	}
+	files := global.StoreHandler.ListByBucket(bucketID)
+	var result []interface{}
+	for _, f := range files {
+		fmt.Println("file id = ", utils.SliceToString(f.ID[:]))
+		obj := global.StoreHandler.GetUserFileInfo(utils.SliceToString(f.ID[:]))
+		if obj != nil {
+			result = append(result, obj.ToObject())
+		}
+	}
+	utils.JSONResponse(result, w)
 }
 
 // GetFileHandler 获取文件
@@ -48,6 +78,7 @@ func GetFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+	fmt.Println(index.BlockID, index.Offset, index.Size)
 	content := global.StoreHandler.Read(index.BlockID, index.Offset, index.Size)
 	tp := http.DetectContentType(content)
 	fmt.Println("tp = ", tp)
