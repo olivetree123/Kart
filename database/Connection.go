@@ -24,7 +24,7 @@ func NewConnection(dbName string) *Connection {
 		DBID:         utils.UUIDToString(db.ID),
 		DBName:       dbName,
 		MetaDataBase: metaDB,
-		DataDataBase: NewDataDB(),
+		DataDataBase: NewDataDB(metaDB),
 	}
 	return conn
 }
@@ -34,7 +34,7 @@ func (conn *Connection) CreateTable(model Model) {
 	table := conn.MetaDataBase.CreateTable(conn.DBID, tableName)
 	t := reflect.TypeOf(model)
 	for i := 0; i < t.NumField(); i++ {
-		fmt.Println(t.Field(i).Name, t.Field(i).Type.Name(), t.Field(i).Tag.Get("orm"))
+		//fmt.Println(t.Field(i).Name, t.Field(i).Type.Name(), t.Field(i).Tag.Get("orm"))
 		length := 0
 		switch t.Field(i).Type.Name() {
 		case "StringField":
@@ -50,7 +50,6 @@ func (conn *Connection) CreateTable(model Model) {
 			length = 20
 			break
 		}
-		fmt.Println("Add column , Name = ", t.Field(i).Name, "length = ", length)
 		conn.MetaDataBase.AddColumn(table.ID, t.Field(i).Name, "string", length)
 	}
 }
@@ -77,19 +76,15 @@ func (conn *Connection) Insert(tableName string, data Model) {
 			panic(info)
 		}
 	}
-	conn.DataDataBase.AddData(table.ID, data.Bytes())
+	conn.DataDataBase.AddData(table.ID, data.GetID(), columns, data)
 }
 
-func (conn *Connection) Select(tableName string, condition string) []interface{} {
+func (conn *Connection) Select(tableName string, condition string) []map[string]string {
 	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
 	if table == nil {
 		panic("Table does not exist.")
 	}
 	columns := conn.MetaDataBase.FindColumnByTable(table.ID)
-	colMap := make(map[string]interface{})
-	for _, column := range columns {
-		colMap[utils.SliceToString(column.Name[:])] = column
-	}
 	queryMap := make(map[string]interface{})
 	conds := strings.Split(condition, "and")
 	for _, cond := range conds {
@@ -98,8 +93,11 @@ func (conn *Connection) Select(tableName string, condition string) []interface{}
 		if len(ds) != 2 {
 			panic("Invalid condition.")
 		}
-		queryMap[ds[0]] = ds[1]
+		column := conn.MetaDataBase.FindColumnByName(table.ID, ds[0])
+		if column == nil {
+			panic("Invalid column.")
+		}
+		queryMap[utils.SliceToString(column.ID[:])] = ds[1]
 	}
-	fmt.Println("queryMap = ", queryMap)
-	return conn.DataDataBase.SelectData(table.ID, columns, queryMap, colMap)
+	return conn.DataDataBase.SelectData(table.ID, columns, queryMap)
 }

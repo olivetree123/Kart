@@ -59,7 +59,7 @@ func main() {
 	//	Public: database.NewBooleanField("Public", true),
 	//}
 	fmt.Println("data = ", data)
-	conn.Insert("BucketModel", data)
+	//conn.Insert("BucketModel", data)
 	result := conn.Select("BucketModel", "UserID=5a81e3552e524e319e196676a91193b9")
 	fmt.Println("result = ", result)
 	router := mux.NewRouter()

@@ -1,12 +1,12 @@
 package database
 
 import (
-	"fmt"
 	"strconv"
 )
 
 type Field interface {
 	GetName() string
+	GetValue() string
 	GetType() string
 	GetLength() int
 	Bytes() []byte
@@ -59,7 +59,6 @@ func NewStringField(name string, value string, length int) StringField {
 }
 
 func NewUUIDField(name string, value string) UUIDField {
-	fmt.Println("value = ", value)
 	if len(value) != 32 {
 		panic("value error.")
 	}
@@ -163,4 +162,20 @@ func (field BooleanField) GetLength() int {
 
 func (field IntegerField) GetLength() int {
 	return field.Length
+}
+
+func (field StringField) GetValue() string {
+	return field.Value
+}
+
+func (field UUIDField) GetValue() string {
+	return field.Value
+}
+
+func (field BooleanField) GetValue() string {
+	return field.Value
+}
+
+func (field IntegerField) GetValue() string {
+	return field.Value
 }

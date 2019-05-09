@@ -36,7 +36,7 @@ type ColumnMetaData struct {
 	// Type 字段类型，有效值有：string/int/bool
 	Type [50]byte
 	// Length 字段长度，只有在 Type == string 时有效
-	Length int32
+	Length uint8
 }
 
 // MetaDB 存储所有DB元数据的数据库
@@ -56,7 +56,7 @@ type DataDB struct {
 
 type TableData struct {
 	TableID [32]byte
-	Data    []byte
+	Data    map[string]string
 }
 
 func GetObjectByMagicNumber(magicNum int) (interface{}, int) {
@@ -87,7 +87,7 @@ func NewMetaDB() *MetaDB {
 	return metaDB
 }
 
-func NewDataDB() *DataDB {
+func NewDataDB(metaDB *MetaDB) *DataDB {
 	metaFilePath := filepath.Join(config.Config.GetString("FilePath"), config.Config.GetString("DataFileName"))
 	f, err := os.OpenFile(metaFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
@@ -99,7 +99,7 @@ func NewDataDB() *DataDB {
 		FileHandler: f,
 		TbData:      data,
 	}
-	dataDB.LoadDataDB()
+	dataDB.LoadDataDB(metaDB)
 	return dataDB
 }
 
@@ -112,7 +112,6 @@ func (db *MetaDB) LoadMetaDB() {
 		return
 	}
 	fmt.Println("size = ", size)
-	//length := unsafe.Sizeof(MetaDB{})
 	var offset int64
 	for size > 0 {
 		var magicNum int8
@@ -151,8 +150,98 @@ func (db *MetaDB) LoadMetaDB() {
 	}
 }
 
-func (db *DataDB) LoadDataDB() {
+func (db *DataDB) LoadDataDB(metaDB *MetaDB) {
 	println("load data db")
+	size, err := db.FileHandler.Seek(0, io.SeekEnd)
+	if err != nil {
+		panic(err)
+	}
+	if size == 0 {
+		return
+	}
+	fmt.Println("size = ", size)
+	var offset int64
+	for size > 0 {
+		// 1. 读 TableID
+		tableID := make([]byte, 32)
+		_, err := db.FileHandler.ReadAt(tableID, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= 32
+		offset += 32
+		// 2. 读 DataID
+		dataID := make([]byte, 32)
+		_, err = db.FileHandler.ReadAt(dataID, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= 32
+		offset += 32
+		// 3. 读 Status
+		status := make([]byte, 1)
+		_, err = db.FileHandler.ReadAt(status, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= 1
+		offset += 1
+		// 4. 读 ColumnID
+		columnID := make([]byte, 32)
+		_, err = db.FileHandler.ReadAt(columnID, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= 32
+		offset += 32
+		// 5. 读 ColumnLength
+		columnLenBytes := make([]byte, 1)
+		_, err = db.FileHandler.ReadAt(columnLenBytes, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= 1
+		offset += 1
+		//columnLen := binary.LittleEndian.Uint16(columnLenBytes)
+		var buf bytes.Buffer
+		_, err = buf.Write(columnLenBytes)
+		if err != nil {
+			panic(err)
+		}
+		columnLen, _ := binary.ReadUvarint(&buf)
+		// 6. 读 ColumnData
+		colData := make([]byte, columnLen)
+		_, err = db.FileHandler.ReadAt(colData, offset)
+		if err != nil {
+			panic(err)
+		}
+		size -= int64(columnLen)
+		offset += int64(columnLen)
+
+		found := false
+		for _, td := range db.TbData {
+			if td.TableID == utils.SliceToUUID(tableID) && td.Data["ID"] == utils.SliceToString(dataID) {
+				found = true
+				td.Data[utils.SliceToString(columnID)] = utils.SliceToString(colData)
+			}
+		}
+		if !found {
+			data := make(map[string]string)
+			data["ID"] = utils.SliceToString(dataID)
+			column := metaDB.FindColumnByID(utils.SliceToUUID(tableID), utils.SliceToUUID(columnID))
+			data[utils.SliceToString(column.Name[:])] = utils.SliceToString(colData)
+			tbData := &TableData{
+				TableID: utils.SliceToUUID(tableID),
+				Data:    data,
+			}
+			db.TbData = append(db.TbData, tbData)
+		}
+		//tbData := &TableData{
+		//	TableID: utils.SliceToUUID(tableID),
+		//	Data:    data,
+		//}
+		//db.TbData = append(db.TbData, tbData)
+	}
 }
 
 func (db *MetaDB) AddData(id string, magicNum int8, data interface{}) {
@@ -177,58 +266,72 @@ func (db *MetaDB) AddData(id string, magicNum int8, data interface{}) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("add column = ", utils.SliceToString(data.(*ColumnMetaData).Name[:]))
 		db.Columns = append(db.Columns, data.(*ColumnMetaData))
 	}
 }
 
-func (db *DataDB) AddData(tableID [32]byte, data []byte) {
-	err := binary.Write(db.FileHandler, binary.LittleEndian, tableID)
-	if err != nil {
-		panic(err)
+func (db *DataDB) AddData(tableID [32]byte, dataID [32]byte, columns []*ColumnMetaData, model Model) {
+	// 数据文件结构：TableID + DataID + Status + ColumnID + ColumnLength + ColumnData
+	// 各个字段字节数分别为：32 + 32 + 1 + 32 + 8 + [ColumnLen]
+	var buf bytes.Buffer
+	for _, column := range columns {
+		err := binary.Write(&buf, binary.LittleEndian, tableID)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(&buf, binary.LittleEndian, dataID)
+		if err != nil {
+			panic(err)
+		}
+		var status = [1]byte{1}
+		err = binary.Write(&buf, binary.LittleEndian, status)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Write(&buf, binary.LittleEndian, column.ID)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Write column.Length = ", column.Length)
+		err = binary.Write(&buf, binary.LittleEndian, column.Length)
+		if err != nil {
+			panic(err)
+		}
+		for _, field := range model.Fields() {
+			if field.GetName() != utils.SliceToString(column.Name[:]) {
+				continue
+			}
+			err = binary.Write(&buf, binary.LittleEndian, field.Bytes())
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
-	err = binary.Write(db.FileHandler, binary.LittleEndian, data)
+	err := binary.Write(db.FileHandler, binary.LittleEndian, buf.Bytes())
 	if err != nil {
 		panic(err)
 	}
 	d := &TableData{
 		TableID: tableID,
-		Data:    data,
+		Data:    ModelToMap(model),
 	}
 	db.TbData = append(db.TbData, d)
 }
 
-func (db *DataDB) SelectData(tableID [32]byte, columns []*ColumnMetaData, queryMap map[string]interface{}, colMap map[string]interface{}) []interface{} {
-	var result []interface{}
+func (db *DataDB) SelectData(tableID [32]byte, columns []*ColumnMetaData, queryMap map[string]interface{}) []map[string]string {
+	var result []map[string]string
+	fmt.Println("select tableID = ", tableID)
 	for _, d := range db.TbData {
+		fmt.Println("d.TableID = ", d.TableID)
 		if d.TableID != tableID {
 			continue
 		}
-		offset := 0
-		dataMap := make(map[string]string)
-		fmt.Println("data length = ", len(d.Data))
-		for _, column := range columns {
-			fmt.Println("column Name = ", utils.SliceToString(column.Name[:]), "length = ", column.Length)
-			fmt.Println("endpoint = ", offset+int(column.Length))
-			value := utils.SliceToString(d.Data[offset : offset+int(column.Length)])
-			dataMap[utils.SliceToString(column.Name[:])] = value
-			offset += int(column.Length)
-		}
-		fmt.Println("dataMap = ", dataMap)
+		fmt.Println("dataMap = ", d.Data)
 		fmt.Println("queryMap = ", queryMap)
-		//dMap := utils.StructPtr2Map(d.Data)
 		flag := true
 		for key, value := range queryMap {
-			//buf := bytes.NewBuffer(reflect.ValueOf(dMap[key]).Interface().([]byte))
-			//fmt.Println(buf.String())
-			//fmt.Println("type of key = ", reflect.TypeOf(dMap[key]), reflect.ValueOf(dMap[key]), reflect.ValueOf(utils.StringToSlice2(value.(string), 32)))
-			//fmt.Println("compare: ", key, reflect.ValueOf(dMap[key]), reflect.ValueOf(utils.StringToSlice2(value.(string), 32)))
-			//if reflect.ValueOf(dMap[key]) != reflect.ValueOf(utils.StringToSlice2(value.(string), 32)) {
-			//	flag = false
-			//	break
-			//}
-			//fmt.Println("Yes, Equal !")
-			if dataMap[key] != value {
+			fmt.Println("key = ", key, "value = ", d.Data[key])
+			if d.Data[key] != value {
 				flag = false
 				break
 			}
@@ -304,7 +407,31 @@ func (db *MetaDB) FindColumnByTable(tableID [32]byte) []*ColumnMetaData {
 	return result
 }
 
+func (db *MetaDB) FindColumnByName(tableID [32]byte, columnName string) *ColumnMetaData {
+	for _, column := range db.Columns {
+		if columnName == utils.SliceToString(column.Name[:]) {
+			return column
+		}
+	}
+	return nil
+}
+
+func (db *MetaDB) FindColumnByID(tableID [32]byte, columnID [32]byte) *ColumnMetaData {
+	for _, column := range db.Columns {
+		if column.TbID == tableID && column.ID == columnID {
+			return column
+		}
+	}
+	return nil
+}
+
 func (db *MetaDB) AddColumn(tableID [32]byte, columnName string, tp string, length int) {
+	for _, column := range db.Columns {
+		if utils.SliceToString(column.Name[:]) == columnName {
+			fmt.Println("column already exists: ", columnName)
+			return
+		}
+	}
 	uid := utils.NewUUID()
 	var cm [50]byte
 	var t [50]byte
@@ -315,7 +442,7 @@ func (db *MetaDB) AddColumn(tableID [32]byte, columnName string, tp string, leng
 		Name:   cm,
 		TbID:   tableID,
 		Type:   t,
-		Length: int32(length),
+		Length: uint8(length),
 	}
 	db.AddData(utils.UUIDToString(uid), MagicCOLUMN, m)
 }

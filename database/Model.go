@@ -8,7 +8,8 @@ import (
 type Model interface {
 	Bytes() []byte
 	Len() int
-	Fields() []interface{}
+	Fields() []Field
+	GetID() [32]byte
 }
 
 type BaseModel struct {
@@ -41,8 +42,12 @@ func (model BucketModel) Len() int {
 	return length
 }
 
-func (model BucketModel) Fields() []interface{} {
-	r := []interface{}{model.ID, model.UserID, model.Name, model.Public}
+func (model BucketModel) GetID() [32]byte {
+	return utils.StringToUUID(model.ID.Value)
+}
+
+func (model BucketModel) Fields() []Field {
+	r := []Field{model.ID, model.UserID, model.Name, model.Public}
 	return r
 }
 
@@ -64,4 +69,12 @@ func NewBucketModel(id string, userID string, name string, public bool) *BucketM
 		Name:   NewStringField("Name", name, lenMap["Name"]),
 		Public: NewBooleanField("Public", public),
 	}
+}
+
+func ModelToMap(model Model) map[string]string {
+	data := make(map[string]string)
+	for _, field := range model.Fields() {
+		data[field.GetName()] = field.GetValue()
+	}
+	return data
 }

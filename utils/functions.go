@@ -39,6 +39,15 @@ func StringToUUID(content string) [32]byte {
 	return fn
 }
 
+func SliceToUUID(sl []byte) [32]byte {
+	if len(sl) != 32 {
+		panic("Invalid slice to uuid.")
+	}
+	var fn [32]byte
+	copy(fn[:], sl)
+	return fn
+}
+
 func UUIDToString(uid [32]byte) string {
 	return string(uid[:])
 }
