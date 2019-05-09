@@ -11,7 +11,10 @@ FilePath = "/data/kart"
 UserFileName = "user.db"
 BucketFileName = "bucket.db"
 IndexFileName = "kart.idx"
+MetaFileName = "meta.db"
+DataFileName = "data.db"
 UserAndFileName = "user_file.idx"
+
 
 # BlockMaxSize 单位 MB，默认为5GB
 BlockMaxSize = 5120

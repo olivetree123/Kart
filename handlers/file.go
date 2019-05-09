@@ -42,6 +42,10 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListFileHandler 获取文件列表
 func ListFileHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		utils.JSONResponse(nil, w)
+		return
+	}
 	userID := r.Header.Get("userID")
 	vars := mux.Vars(r)
 	bucketID := vars["bucketID"]

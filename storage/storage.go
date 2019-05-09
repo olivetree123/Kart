@@ -176,7 +176,7 @@ func (st *Storage) AddFile(userID string, r io.Reader, fileName string, bucketNa
 	fmt.Println(string(bucket.ID[:]))
 	index := NewIndex(fileID, string(bucket.ID[:]), blockID, offset, size)
 	st.Indexes.AddIndex(index)
-	uf := NewUserAndFile(userID, fileID, fileName)
+	uf := NewUserAndFile(userID, fileID, fileName, index.Size)
 	st.UserAndFiles.Add(uf)
 	return fileID
 }

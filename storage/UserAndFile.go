@@ -11,6 +11,7 @@ type UserAndFile struct {
 	FileID     [32]byte // 32 byte
 	UserID     [32]byte
 	FileName   [64]byte
+	Size       int64 // 8 byte
 	UploadTime int64
 	UpdateTime int64
 }
@@ -20,12 +21,13 @@ type UserAndFileObject struct {
 	FileID     string
 	UserID     string
 	FileName   string
+	Size       int64 // 8 byte
 	UploadTime int64
 	UpdateTime int64
 }
 
 // NewUserAndFile 当用户上传文件时，需要将用户和文件进行关联。
-func NewUserAndFile(userID string, fileID string, fileName string) *UserAndFile {
+func NewUserAndFile(userID string, fileID string, fileName string, size int64) *UserAndFile {
 	now := time.Now().Unix()
 	var fn [64]byte
 	copy(fn[:], fileName)
@@ -34,6 +36,7 @@ func NewUserAndFile(userID string, fileID string, fileName string) *UserAndFile 
 		FileID:     utils.StringToUUID(fileID),
 		UserID:     utils.StringToUUID(userID),
 		FileName:   fn,
+		Size:       size,
 		UploadTime: now,
 		UpdateTime: now,
 	}
@@ -46,6 +49,7 @@ func (uf *UserAndFile) ToObject() *UserAndFileObject {
 		FileID:     utils.SliceToString(uf.FileID[:]),
 		UserID:     utils.SliceToString(uf.UserID[:]),
 		FileName:   utils.SliceToString(uf.FileName[:]),
+		Size:       uf.Size,
 		UploadTime: uf.UploadTime,
 		UpdateTime: uf.UpdateTime,
 	}

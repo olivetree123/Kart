@@ -21,6 +21,14 @@ func AddBucketHandler(w http.ResponseWriter, r *http.Request) {
 
 // ListBucketHandler 文件夹列表
 func ListBucketHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		//w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Access-Control-Allow-Origin", "*")
+		//w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		//w.Write(nil)
+		utils.JSONResponse(nil, w)
+		return
+	}
 	userID := r.Header.Get("userID")
 	fmt.Println("userID = ", userID)
 	buckets := global.StoreHandler.ListBucket(userID)
@@ -28,5 +36,6 @@ func ListBucketHandler(w http.ResponseWriter, r *http.Request) {
 	for _, bucket := range buckets {
 		rs = append(rs, bucket.ToObject())
 	}
+	fmt.Println("rs = ", rs)
 	utils.JSONResponse(rs, w)
 }

@@ -1,12 +1,16 @@
 package global
 
 import (
+	//"kart/database"
 	"kart/storage"
 	"time"
 )
 
 // StoreHandler xxx
 var StoreHandler = storage.NewStorage()
+
+// DBConn 数据库连接
+//var DBConn = database.NewConnection("kart")
 
 // TokenMap token 存储
 var TokenMap = make(map[string]*Cache)

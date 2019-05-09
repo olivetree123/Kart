@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	"kart/utils"
+	//"kart/utils"
 	// "kart/storage"
 	// "os"
 	"github.com/gorilla/mux"
 	// "github.com/spf13/viper"
 	"kart/config"
+	"kart/database"
 	"kart/handlers"
 	"kart/middleware"
 	"log"
@@ -32,11 +35,38 @@ func main() {
 	// } else {
 	// 	fmt.Println("index found, ", index.BlockID, index.Offset, index.Size)
 	// }
+	conn := database.NewConnection("kart")
+	fmt.Println("begin to create table")
+	conn.CreateTable(database.BucketModel{})
+	var bucketName [50]byte
+	copy(bucketName[:], "image")
+	//data := &database.BucketModel{
+	//	ID:     utils.NewUUID(),
+	//	Name:   bucketName,
+	//	UserID: utils.StringToUUID("5a81e355-2e52-4e31-9e19-6676a91193b9"),
+	//	Public: true,
+	//}
+	data := database.NewBucketModel(
+		utils.UUIDToString(utils.NewUUID()),
+		"5a81e3552e524e319e196676a91193b9",
+		"gaojian",
+		true,
+	)
+	//data := &database.BucketModel{
+	//	ID:     database.NewUUIDField("ID", utils.UUIDToString(utils.NewUUID())),
+	//	UserID: database.NewUUIDField("UserID", "5a81e3552e524e319e196676a91193b9"),
+	//	Name:   database.NewStringField("Name", "gaojian", 10),
+	//	Public: database.NewBooleanField("Public", true),
+	//}
+	fmt.Println("data = ", data)
+	conn.Insert("BucketModel", data)
+	result := conn.Select("BucketModel", "UserID=5a81e3552e524e319e196676a91193b9")
+	fmt.Println("result = ", result)
 	router := mux.NewRouter()
 	// API 创建用户
 	router.HandleFunc("/kart/user", handlers.AddUserHandler).Methods("post")
 	// API 登陆
-	router.HandleFunc("/kart/login", handlers.LoginHandler).Methods("post")
+	router.HandleFunc("/kart/login", handlers.LoginHandler).Methods("post", "options")
 	// API 创建 Bucket
 	// router.HandleFunc("/kart/bucket", handlers.AddBucketHandler).Methods("post")
 	router.Handle(
@@ -47,7 +77,7 @@ func main() {
 	router.Handle(
 		"/kart/buckets",
 		middleware.Auth(http.HandlerFunc(handlers.ListBucketHandler)),
-	).Methods("get")
+	).Methods("get", "options")
 	//router.HandleFunc("/kart/buckets", handlers.ListBucketHandler).Methods("get")
 	// API 上传文件
 	router.Handle(
@@ -58,7 +88,7 @@ func main() {
 	router.Handle(
 		"/kart/files/{bucketID}",
 		middleware.Auth(http.HandlerFunc(handlers.ListFileHandler)),
-	).Methods("get")
+	).Methods("get", "options")
 	//router.HandleFunc("/kart/files", handlers.ListFileHandler).Methods("get")
 	// API 获取文件
 	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")

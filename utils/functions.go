@@ -5,6 +5,9 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/google/uuid"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 // ContentMd5 计算内容的 md5 值
@@ -19,6 +22,12 @@ func ContentMd5(content []byte) string {
 }
 
 func StringToSlice(content string, length int) []byte {
+	fn := make([]byte, length)
+	copy(fn[:], content)
+	return fn
+}
+
+func StringToSlice2(content string, length int) interface{} {
 	fn := make([]byte, length)
 	copy(fn[:], content)
 	return fn
@@ -41,6 +50,56 @@ func SliceToString(sl []byte) string {
 func NewUUID() [32]byte {
 	uid := uuid.Must(uuid.NewRandom())
 	var idBytes [32]byte
-	copy(idBytes[:], uid.String())
+	copy(idBytes[:], strings.Replace(uid.String(), "-", "", -1))
 	return idBytes
+}
+
+func StructPtr2Map(obj interface{}) map[string]interface{} {
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	var data = make(map[string]interface{})
+	for i := 0; i < t.Elem().NumField(); i++ {
+		fmt.Println(t.Elem().Field(i).Name)
+		data[t.Elem().Field(i).Name] = v.Elem().Field(i).Interface()
+	}
+	return data
+}
+
+func Struct2Map(obj interface{}) map[string]interface{} {
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	var data = make(map[string]interface{})
+	for i := 0; i < t.NumField(); i++ {
+		data[t.Field(i).Name] = v.Field(i).Interface()
+	}
+	return data
+}
+
+func interface2String(inter interface{}) {
+	switch inter.(type) {
+	case string:
+		fmt.Println("string", inter.(string))
+		break
+	case int:
+		fmt.Println("int", inter.(int))
+		break
+	case float64:
+		fmt.Println("float64", inter.(float64))
+		break
+	}
+}
+
+func GetLenFromTag(tag string) int {
+	length := 0
+	tagList := strings.Split(tag, ",")
+	for _, t := range tagList {
+		kv := strings.Split(t, "=")
+		key := kv[0]
+		value := kv[1]
+		if key == "length" {
+			length, _ = strconv.Atoi(value)
+			break
+		}
+	}
+	return length
 }

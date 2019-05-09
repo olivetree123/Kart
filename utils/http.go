@@ -2,8 +2,15 @@ package utils
 
 import (
 	"encoding/json"
+	//"fmt"
 	"net/http"
 )
+
+func PermitCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, Authorization")
+}
 
 // JSONResponse 返回 json 对象
 func JSONResponse(data interface{}, w http.ResponseWriter) {
@@ -12,9 +19,13 @@ func JSONResponse(data interface{}, w http.ResponseWriter) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	PermitCORS(w)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonData)
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(jsonData)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // JSONParam 获取 json 参数
