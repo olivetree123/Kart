@@ -92,7 +92,6 @@ func (conn *Connection) Select(tableName string, condition string) []map[string]
 			panic("Invalid column.")
 		}
 		value := ds[1]
-		fmt.Println("column type = ", utils.SliceToString(column.Type[:]))
 		if utils.SliceToString(column.Type[:]) == "bool" {
 			fmt.Println("column type is bool")
 			if value == "true" {

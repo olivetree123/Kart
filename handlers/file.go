@@ -22,11 +22,6 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	// _, err = jpeg.Decode(fileObj)
-	// if err != nil {
-	// 	fmt.Println("EEEEEEEEE")
-	// 	panic(err)
-	// }
 	userID := r.Header.Get("userID")
 	fmt.Println("userID = ", userID)
 	fmt.Println("bucket = ", bucket)

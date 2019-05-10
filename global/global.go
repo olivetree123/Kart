@@ -41,7 +41,7 @@ func NewCache(key string, value interface{}, duration int) *Cache {
 var cache = &Cache{}
 
 // SetToken 设置 token
-func SetToken(key string, value *storage.UserObject) {
+func SetToken(key string, value map[string]string) {
 	cache := NewCache(key, value, 3600)
 	TokenMap[key] = cache
 }

@@ -217,16 +217,16 @@ func (db *DataDB) LoadDataDB(metaDB *MetaDB) {
 		offset += int64(columnLen)
 
 		found := false
+		column := metaDB.FindColumnByID(utils.SliceToUUID(tableID), utils.SliceToUUID(columnID))
 		for _, td := range db.TbData {
 			if td.TableID == utils.SliceToUUID(tableID) && td.Data["ID"] == utils.SliceToString(dataID) {
 				found = true
-				td.Data[utils.SliceToString(columnID)] = utils.SliceToString(colData)
+				td.Data[utils.SliceToString(column.Name[:])] = utils.SliceToString(colData)
 			}
 		}
 		if !found {
 			data := make(map[string]string)
 			data["ID"] = utils.SliceToString(dataID)
-			column := metaDB.FindColumnByID(utils.SliceToUUID(tableID), utils.SliceToUUID(columnID))
 			data[utils.SliceToString(column.Name[:])] = utils.SliceToString(colData)
 			tbData := &TableData{
 				TableID: utils.SliceToUUID(tableID),
@@ -317,7 +317,6 @@ func (db *DataDB) SelectData(tableID [32]byte, columns []*ColumnMetaData, queryM
 	var result []map[string]string
 	fmt.Println("select tableID = ", tableID)
 	for _, d := range db.TbData {
-		fmt.Println("d.TableID = ", d.TableID)
 		if d.TableID != tableID {
 			continue
 		}
@@ -422,7 +421,6 @@ func (db *MetaDB) FindColumnByID(tableID [32]byte, columnID [32]byte) *ColumnMet
 func (db *MetaDB) AddColumn(tableID [32]byte, columnName string, tp string, length int) {
 	for _, column := range db.Columns {
 		if column.TbID == tableID && utils.SliceToString(column.Name[:]) == columnName {
-			fmt.Println("column already exists: ", columnName)
 			return
 		}
 	}
