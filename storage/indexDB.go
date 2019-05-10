@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"kart/config"
 	"kart/utils"
 	"os"
@@ -56,10 +55,8 @@ func (tree *IndexDB) LoadIndex() {
 		return
 	}
 	length := unsafe.Sizeof(Index{})
-	fmt.Println("length = ", length)
 	var offset int64
 	for size > 0 {
-		fmt.Println("size = ", size)
 		indexBytes := make([]byte, length)
 		_, err := tree.FileHandler.ReadAt(indexBytes, offset)
 		if err != nil {

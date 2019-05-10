@@ -7,9 +7,10 @@ import (
 type Field interface {
 	GetName() string
 	GetValue() string
+	Bytes() []byte
+	// GetType 和 GetLength 比较特殊，返回的是结构的属性，其他函数返回的都是对象的属性
 	GetType() string
 	GetLength() int
-	Bytes() []byte
 }
 
 type StringField struct {
@@ -53,7 +54,6 @@ func NewStringField(name string, value string, length int) StringField {
 	return StringField{
 		Name:   name,
 		Value:  value,
-		Type:   "string",
 		Length: length,
 	}
 }
@@ -65,7 +65,6 @@ func NewUUIDField(name string, value string) UUIDField {
 	return UUIDField{
 		Name:   name,
 		Value:  value,
-		Type:   "uuid",
 		Length: 32,
 	}
 }
@@ -78,16 +77,14 @@ func NewBooleanField(name string, value bool) BooleanField {
 	return BooleanField{
 		Name:   name,
 		Value:  v,
-		Type:   "bool",
 		Length: 1,
 	}
 }
 
-func NewIntegerField(name string, value int) IntegerField {
+func NewIntegerField(name string, value int64) IntegerField {
 	return IntegerField{
 		Name:   name,
-		Value:  strconv.Itoa(value),
-		Type:   "int",
+		Value:  strconv.FormatInt(value, 10),
 		Length: 20,
 	}
 }
@@ -133,35 +130,36 @@ func (field IntegerField) GetName() string {
 }
 
 func (field StringField) GetType() string {
-	return field.Type
+	return "string"
 }
 
 func (field UUIDField) GetType() string {
-	return field.Type
+	return "uuid"
 }
 
 func (field BooleanField) GetType() string {
-	return field.Type
+	return "bool"
 }
 
 func (field IntegerField) GetType() string {
-	return field.Type
+	return "int"
 }
 
 func (field StringField) GetLength() int {
-	return field.Length
+	// StringField 默认为 255，用户可在 tag 中自定义
+	return 255
 }
 
 func (field UUIDField) GetLength() int {
-	return field.Length
+	return 32
 }
 
 func (field BooleanField) GetLength() int {
-	return field.Length
+	return 1
 }
 
 func (field IntegerField) GetLength() int {
-	return field.Length
+	return 20
 }
 
 func (field StringField) GetValue() string {

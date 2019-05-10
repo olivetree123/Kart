@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"kart/config"
 	"kart/utils"
@@ -55,7 +54,6 @@ func (db *UserAndFileDB) LoadUserAndFile() {
 		return
 	}
 	length := unsafe.Sizeof(UserAndFile{})
-	fmt.Println("length = ", length)
 	var offset int64
 	for size > 0 {
 		indexBytes := make([]byte, length)

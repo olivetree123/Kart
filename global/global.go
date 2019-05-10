@@ -1,6 +1,7 @@
 package global
 
 import (
+	"kart/database"
 	//"kart/database"
 	"kart/storage"
 	"time"
@@ -8,6 +9,7 @@ import (
 
 // StoreHandler xxx
 var StoreHandler = storage.NewStorage()
+var DBConn = database.NewConnection("kart")
 
 // DBConn 数据库连接
 //var DBConn = database.NewConnection("kart")

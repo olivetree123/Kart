@@ -16,9 +16,7 @@ type Connection struct {
 }
 
 func NewConnection(dbName string) *Connection {
-	fmt.Println("111")
 	metaDB := NewMetaDB()
-	fmt.Println("begin to create db")
 	db := metaDB.CreateDB(dbName)
 	conn := &Connection{
 		DBID:         utils.UUIDToString(db.ID),
@@ -29,32 +27,24 @@ func NewConnection(dbName string) *Connection {
 	return conn
 }
 
-func (conn *Connection) CreateTable(model Model) {
+func (conn *Connection) CreateTable(model interface{}) {
 	tableName := reflect.TypeOf(model).Name()
 	table := conn.MetaDataBase.CreateTable(conn.DBID, tableName)
 	t := reflect.TypeOf(model)
+	v := reflect.ValueOf(model)
 	for i := 0; i < t.NumField(); i++ {
-		//fmt.Println(t.Field(i).Name, t.Field(i).Type.Name(), t.Field(i).Tag.Get("orm"))
-		length := 0
-		switch t.Field(i).Type.Name() {
-		case "StringField":
-			length = utils.GetLenFromTag(t.Field(i).Tag.Get("orm"))
-			break
-		case "UUIDField":
-			length = 32
-			break
-		case "BooleanField":
-			length = 1
-			break
-		case "IntegerField":
-			length = 20
-			break
+		length := v.Field(i).Interface().(Field).GetLength()
+		if t.Field(i).Type.Name() == "StringField" {
+			length2 := utils.GetLenFromTag(t.Field(i).Tag.Get("kart"))
+			if length2 > 0 {
+				length = length2
+			}
 		}
-		conn.MetaDataBase.AddColumn(table.ID, t.Field(i).Name, "string", length)
+		conn.MetaDataBase.AddColumn(table.ID, t.Field(i).Name, v.Field(i).Interface().(Field).GetType(), length)
 	}
 }
 
-func (conn *Connection) Insert(tableName string, data Model) {
+func (conn *Connection) Insert(tableName string, data interface{}) {
 	// 需要验证 data 与数据库中的表是否结构相同
 	//dataMap := utils.StructPtr2Map(data)
 	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
@@ -69,14 +59,18 @@ func (conn *Connection) Insert(tableName string, data Model) {
 		d["Length"] = column.Length
 		colMap[utils.SliceToString(column.Name[:])] = d
 	}
-	for _, field := range data.Fields() {
+	for _, field := range GetModelFields(data) {
 		fieldName := field.(Field).GetName()
 		if _, found := colMap[fieldName]; !found {
 			info := fmt.Sprintf("key = %s not found in table %s", fieldName, tableName)
 			panic(info)
 		}
 	}
-	conn.DataDataBase.AddData(table.ID, data.GetID(), columns, data)
+	dataID, err := GetModelID(data)
+	if err != nil {
+		panic(err)
+	}
+	conn.DataDataBase.AddData(table.ID, utils.StringToUUID(dataID), columns, data)
 }
 
 func (conn *Connection) Select(tableName string, condition string) []map[string]string {
@@ -97,7 +91,18 @@ func (conn *Connection) Select(tableName string, condition string) []map[string]
 		if column == nil {
 			panic("Invalid column.")
 		}
-		queryMap[utils.SliceToString(column.ID[:])] = ds[1]
+		value := ds[1]
+		fmt.Println("column type = ", utils.SliceToString(column.Type[:]))
+		if utils.SliceToString(column.Type[:]) == "bool" {
+			fmt.Println("column type is bool")
+			if value == "true" {
+				value = "1"
+			} else {
+				value = "0"
+			}
+		}
+		//queryMap[utils.SliceToString(column.ID[:])] = value
+		queryMap[ds[0]] = value
 	}
 	return conn.DataDataBase.SelectData(table.ID, columns, queryMap)
 }
