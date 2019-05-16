@@ -236,6 +236,13 @@ func (db *DataDB) LoadDataDB(metaDB *MetaDB) {
 
 		found := false
 		column := metaDB.FindColumnByID(utils.SliceToUUID(tableID), utils.SliceToUUID(columnID))
+		if column == nil {
+			fmt.Println("tableID = ", utils.SliceToString(tableID))
+			fmt.Println("columnID = ", utils.SliceToString(columnID))
+			panic("Column is nil")
+		}
+		fmt.Println("tableID = ", utils.SliceToString(tableID))
+		fmt.Println("ColumnName = ", utils.SliceToString(column.Name[:]))
 		for _, td := range db.TbData {
 			if td.TableID == utils.SliceToUUID(tableID) && td.Data["ID"].Value == utils.SliceToString(dataID) {
 				found = true
@@ -364,12 +371,16 @@ func (db *DataDB) SelectOneData(tableID [32]byte, conditions []Condition) map[st
 	fmt.Println("select tableID = ", tableID)
 	fmt.Println("querySlice = ", conditions)
 	for _, d := range db.TbData {
+		fmt.Println("d.TableID = ", d.TableID)
 		if d.TableID != tableID {
 			continue
 		}
 		fmt.Println("dataMap = ", d.Data)
 		flag := true
 		for _, cond := range conditions {
+			fmt.Println("cond.Field = ", cond.Field)
+			fmt.Println("d.Data = ", d.Data)
+			fmt.Println("value = ", d.Data[cond.Field].Value)
 			status := CompareByOperator(d.Data[cond.Field].Value, cond.Value, cond.Operator)
 			if !status {
 				flag = false

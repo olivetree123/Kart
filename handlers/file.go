@@ -24,7 +24,8 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	userID := r.Header.Get("userID")
+	//userID := r.Header.Get("userID")
+	userID := "4220857c1585416391054f447f875e48"
 	fmt.Println("userID = ", userID)
 	fmt.Println("bucket = ", bucketName)
 	object := storage.CreateObject(fileObj, bucketName)

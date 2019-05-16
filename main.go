@@ -70,7 +70,7 @@ func main() {
 	).Methods("get", "options")
 	//router.HandleFunc("/kart/files", handlers.ListFileHandler).Methods("get")
 	// API 获取文件
-	router.HandleFunc("/kart/file/{fileID}", handlers.GetFileHandler).Methods("get")
+	router.HandleFunc("/kart/file/{objectID}", handlers.GetFileHandler).Methods("get")
 	// host := "0.0.0.0"
 	// port := 8000
 	host := config.Config.GetString("Host")

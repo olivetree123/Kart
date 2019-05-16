@@ -211,13 +211,15 @@ func CreateObject(f multipart.File, bucketName string) ObjectModel {
 	// 2. 找到剩余空间足够的 freeSection
 	size, _ := f.Seek(0, io.SeekEnd)
 	condition := fmt.Sprintf("Size>%d", size)
+	fmt.Println("condition = ", condition)
 	sectionMap := global.DBConn.SelectOne("FreeSectionModel", condition)
 	if sectionMap == nil {
 		panic("剩余空间不足")
 	}
 	section := FreeSectionModelFromMap(sectionMap)
 
-	cond := fmt.Sprintf("VolumeID=%s", section.VolumeID.GetValue())
+	cond := fmt.Sprintf("ID=%s", section.VolumeID.GetValue())
+	fmt.Println("cond2 = ", cond)
 	volumeMap := global.DBConn.SelectOne("VolumeModel", cond)
 	volume := VolumeModelFromMap(volumeMap)
 	filePath := path.Join(volume.DirPath.GetValue(), "binData.db")
@@ -227,7 +229,7 @@ func CreateObject(f multipart.File, bucketName string) ObjectModel {
 	}
 	offset := section.Offset.GetInt()
 	var content []byte
-	_, err = f.Read(content)
+	_, err = f.ReadAt(content, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -243,7 +245,7 @@ func CreateObject(f multipart.File, bucketName string) ObjectModel {
 	afterOffset := strconv.Itoa(offset + int(size))
 	data["Size"] = afterSize
 	data["Offset"] = afterOffset
-	global.DBConn.Update("SectionModel", condition, data)
+	global.DBConn.Update("FreeSectionModel", condition, data)
 	object := NewObjectModel(section.VolumeID.GetValue(), bucket.ID.GetValue(), int64(offset), size)
 	global.DBConn.Insert("ObjectModel", object)
 	return object

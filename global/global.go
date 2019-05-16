@@ -2,13 +2,12 @@ package global
 
 import (
 	"Kart/database"
-	//"Kart/database"
-	"Kart/storage"
+	//"Kart/storage"
 	"time"
 )
 
 // StoreHandler xxx
-var StoreHandler = storage.NewStorage()
+//var StoreHandler = storage.NewStorage()
 var DBConn = database.NewConnection("kart")
 
 // DBConn 数据库连接
@@ -47,12 +46,12 @@ func SetToken(key string, value map[string]string) {
 }
 
 // GetToken 获取 token
-func GetToken(key string) *storage.UserObject {
-	if r, found := TokenMap[key]; found {
-		now := time.Now().Unix()
-		if r.Duration == 0 || r.CreateTime+int64(r.Duration) > now {
-			return r.Value.(*storage.UserObject)
-		}
-	}
-	return nil
-}
+//func GetToken(key string) *storage.UserObject {
+//	if r, found := TokenMap[key]; found {
+//		now := time.Now().Unix()
+//		if r.Duration == 0 || r.CreateTime+int64(r.Duration) > now {
+//			return r.Value.(*storage.UserObject)
+//		}
+//	}
+//	return nil
+//}

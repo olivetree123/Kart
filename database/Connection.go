@@ -117,6 +117,7 @@ func (conn *Connection) SelectOne(tableName string, condition string) map[string
 	if table == nil {
 		panic("Table does not exist.")
 	}
+	fmt.Println("tableName = ", tableName, utils.SliceToString(table.Name[:]))
 	conditions := conn.ParseCondition(table.ID, condition)
 	return conn.DataDataBase.SelectOneData(table.ID, conditions)
 }
