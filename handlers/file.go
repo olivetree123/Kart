@@ -1,38 +1,37 @@
 package handlers
 
 import (
+	"Kart/database"
+	"Kart/storage"
+	"Kart/utils"
 	"bytes"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/nfnt/resize"
-	"kart/utils"
 	// "golang.org/x/image/bmp"
+	"Kart/global"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
-	"kart/global"
 	"net/http"
 	"strconv"
 )
 
 // AddFileHandler 上传文件
 func AddFileHandler(w http.ResponseWriter, r *http.Request) {
-	bucket := r.FormValue("bucket")
+	bucketName := r.FormValue("bucket")
 	fileObj, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		panic(err)
 	}
 	userID := r.Header.Get("userID")
 	fmt.Println("userID = ", userID)
-	fmt.Println("bucket = ", bucket)
-	fmt.Println(fileHeader.Filename)
-	fileID := global.StoreHandler.AddFile(userID, fileObj, fileHeader.Filename, bucket)
-	w.WriteHeader(http.StatusOK)
-	if fileID == "" {
-		fmt.Fprintf(w, "Failed to Add File.")
-		return
-	}
-	fmt.Fprintf(w, "Success to Add File, fileID = %s.", fileID)
+	fmt.Println("bucket = ", bucketName)
+	object := storage.CreateObject(fileObj, bucketName)
+	uf := storage.NewUserFileModel(object.ID.GetValue(), userID, fileHeader.Filename, int64(object.Size.GetInt()))
+	global.DBConn.Insert("UserFileModel", uf)
+	utils.JSONResponse(database.ModelToMap(object), w)
+
 }
 
 // ListFileHandler 获取文件列表
@@ -45,19 +44,18 @@ func ListFileHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bucketID := vars["bucketID"]
 	// 先要检查这个 bucket 是不是属于该用户
-	isEnable := global.StoreHandler.CheckBucketPermission(userID, bucketID)
-	if !isEnable {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "You are not permitted to access this bucket.")
-		return
-	}
-	files := global.StoreHandler.ListByBucket(bucketID)
+	//isEnable := global.StoreHandler.CheckBucketPermission(userID, bucketID)
+	//if !isEnable {
+	//	w.WriteHeader(http.StatusOK)
+	//	fmt.Fprintf(w, "You are not permitted to access this bucket.")
+	//	return
+	//}
+	objectList := storage.ListObject(bucketID)
 	var result []interface{}
-	for _, f := range files {
-		fmt.Println("file id = ", utils.SliceToString(f.ID[:]))
-		obj := global.StoreHandler.GetUserFileInfo(utils.SliceToString(f.ID[:]))
-		if obj != nil {
-			result = append(result, obj.ToObject())
+	for _, object := range objectList {
+		uf := storage.GetUserFile(userID, object.ID.GetValue())
+		if uf != nil {
+			result = append(result, uf)
 		}
 	}
 	utils.JSONResponse(result, w)
@@ -66,19 +64,14 @@ func ListFileHandler(w http.ResponseWriter, r *http.Request) {
 // GetFileHandler 获取文件
 func GetFileHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fileID := vars["fileID"]
+	objectID := vars["objectID"]
 	params := r.URL.Query()
 	width, _ := strconv.Atoi(params.Get("width"))
 	height, _ := strconv.Atoi(params.Get("height"))
-	index := global.StoreHandler.FindByFileID(fileID)
-	if index == nil {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "Failed to Get File By ID = %s.", fileID)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	fmt.Println(index.BlockID, index.Offset, index.Size)
-	content := global.StoreHandler.Read(index.BlockID, index.Offset, index.Size)
+	//index := global.StoreHandler.FindByFileID(fileID)
+	object := storage.GetObject(objectID)
+	content := storage.GetObjectContent(object)
+	//content := global.StoreHandler.Read(index.BlockID, index.Offset, index.Size)
 	tp := http.DetectContentType(content)
 	fmt.Println("tp = ", tp)
 	if width > 0 || height > 0 {

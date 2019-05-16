@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"Kart/database"
+	"Kart/global"
+	"Kart/storage"
+	"Kart/utils"
 	"fmt"
-	"kart/database"
-	"kart/global"
-	"kart/storage"
-	"kart/utils"
 	"net/http"
 )
 
@@ -38,13 +38,6 @@ func ListBucketHandler(w http.ResponseWriter, r *http.Request) {
 	//userID := r.Header.Get("userID")
 	userID := "4220857c1585416391054f447f875e48"
 	fmt.Println("userID = ", userID)
-	//buckets := global.StoreHandler.ListBucket(userID)
 	buckets := global.DBConn.Select("BucketModel", "UserID=4220857c1585416391054f447f875e48")
-	//var rs []interface{}
-	//for _, bucket := range buckets {
-	//	rs = append(rs, bucket.ToObject())
-	//}
-	//fmt.Println("rs = ", rs)
-	//utils.JSONResponse(rs, w)
 	utils.JSONResponse(buckets, w)
 }

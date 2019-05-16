@@ -1,12 +1,12 @@
 package database
 
 import (
+	"Kart/config"
+	"Kart/utils"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"kart/config"
-	"kart/utils"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -54,9 +54,25 @@ type DataDB struct {
 	TbData      []*TableData
 }
 
+type ColumnData struct {
+	PKValue string
+	Value   string
+	Offset  int64
+	Length  int
+	Status  bool
+}
+
 type TableData struct {
 	TableID [32]byte
-	Data    map[string]string
+	Data    map[string]*ColumnData
+}
+
+func ColumnDataToMap(data map[string]*ColumnData) map[string]string {
+	result := make(map[string]string)
+	for key, d := range data {
+		result[key] = d.Value
+	}
+	return result
 }
 
 func GetObjectByMagicNumber(magicNum int) (interface{}, int) {
@@ -182,6 +198,10 @@ func (db *DataDB) LoadDataDB(metaDB *MetaDB) {
 		if err != nil {
 			panic(err)
 		}
+		st := true
+		if utils.SliceToInt(status[:]) == 0 {
+			st = false
+		}
 		size -= 1
 		offset += 1
 		// 4. 读 ColumnID
@@ -213,27 +233,41 @@ func (db *DataDB) LoadDataDB(metaDB *MetaDB) {
 		if err != nil {
 			panic(err)
 		}
-		size -= int64(columnLen)
-		offset += int64(columnLen)
 
 		found := false
 		column := metaDB.FindColumnByID(utils.SliceToUUID(tableID), utils.SliceToUUID(columnID))
 		for _, td := range db.TbData {
-			if td.TableID == utils.SliceToUUID(tableID) && td.Data["ID"] == utils.SliceToString(dataID) {
+			if td.TableID == utils.SliceToUUID(tableID) && td.Data["ID"].Value == utils.SliceToString(dataID) {
 				found = true
-				td.Data[utils.SliceToString(column.Name[:])] = utils.SliceToString(colData)
+				td.Data[utils.SliceToString(column.Name[:])] = &ColumnData{
+					PKValue: utils.SliceToString(dataID),
+					Value:   utils.SliceToString(colData),
+					Offset:  offset,
+					Length:  int(columnLen),
+					Status:  st,
+				}
+				break
 			}
 		}
 		if !found {
-			data := make(map[string]string)
-			data["ID"] = utils.SliceToString(dataID)
-			data[utils.SliceToString(column.Name[:])] = utils.SliceToString(colData)
+			data := make(map[string]*ColumnData)
+			//data["ID"] = utils.SliceToString(dataID)
+			data[utils.SliceToString(column.Name[:])] = &ColumnData{
+				PKValue: utils.SliceToString(dataID),
+				Value:   utils.SliceToString(colData),
+				Offset:  offset,
+				Length:  int(columnLen),
+				Status:  st,
+			}
 			tbData := &TableData{
 				TableID: utils.SliceToUUID(tableID),
 				Data:    data,
 			}
 			db.TbData = append(db.TbData, tbData)
 		}
+
+		size -= int64(columnLen)
+		offset += int64(columnLen)
 	}
 }
 
@@ -267,7 +301,8 @@ func (db *DataDB) AddData(tableID [32]byte, dataID [32]byte, columns []*ColumnMe
 	// 数据文件结构：TableID + DataID + Status + ColumnID + ColumnLength + ColumnData
 	// 各个字段字节数分别为：32 + 32 + 1 + 32 + 8 + [ColumnLen]
 	var buf bytes.Buffer
-	data := make(map[string]string)
+	data := make(map[string]*ColumnData)
+	offset, _ := db.FileHandler.Seek(0, io.SeekEnd)
 	for _, column := range columns {
 		err := binary.Write(&buf, binary.LittleEndian, tableID)
 		if err != nil {
@@ -281,6 +316,10 @@ func (db *DataDB) AddData(tableID [32]byte, dataID [32]byte, columns []*ColumnMe
 		err = binary.Write(&buf, binary.LittleEndian, status)
 		if err != nil {
 			panic(err)
+		}
+		st := true
+		if utils.SliceToInt(status[:]) == 0 {
+			st = false
 		}
 		err = binary.Write(&buf, binary.LittleEndian, column.ID)
 		if err != nil {
@@ -299,7 +338,15 @@ func (db *DataDB) AddData(tableID [32]byte, dataID [32]byte, columns []*ColumnMe
 			if err != nil {
 				panic(err)
 			}
-			data[utils.SliceToString(column.Name[:])] = field.GetValue()
+			offset += 32 + 32 + 1 + 32 + 8
+			data[utils.SliceToString(column.Name[:])] = &ColumnData{
+				PKValue: utils.UUIDToString(dataID),
+				Value:   field.GetValue(),
+				Offset:  offset,
+				Length:  int(column.Length),
+				Status:  st,
+			}
+			break
 		}
 	}
 	err := binary.Write(db.FileHandler, binary.LittleEndian, buf.Bytes())
@@ -313,29 +360,124 @@ func (db *DataDB) AddData(tableID [32]byte, dataID [32]byte, columns []*ColumnMe
 	db.TbData = append(db.TbData, d)
 }
 
-func (db *DataDB) SelectData(tableID [32]byte, columns []*ColumnMetaData, queryMap map[string]interface{}) []map[string]string {
-	var result []map[string]string
+func (db *DataDB) SelectOneData(tableID [32]byte, conditions []Condition) map[string]string {
 	fmt.Println("select tableID = ", tableID)
+	fmt.Println("querySlice = ", conditions)
 	for _, d := range db.TbData {
 		if d.TableID != tableID {
 			continue
 		}
 		fmt.Println("dataMap = ", d.Data)
-		fmt.Println("queryMap = ", queryMap)
 		flag := true
-		for key, value := range queryMap {
-			fmt.Println("key = ", key, "value = ", d.Data[key])
-			if d.Data[key] != value {
+		for _, cond := range conditions {
+			status := CompareByOperator(d.Data[cond.Field].Value, cond.Value, cond.Operator)
+			if !status {
 				flag = false
 				break
 			}
 			fmt.Println("Yes, Equal !")
 		}
-		if flag {
-			result = append(result, d.Data)
+		if flag && d.Data["ID"].Status == true {
+			return ColumnDataToMap(d.Data)
+		}
+	}
+	return nil
+}
+
+func (db *DataDB) SelectData(tableID [32]byte, conditions []Condition) []map[string]string {
+	var result []map[string]string
+	fmt.Println("select tableID = ", tableID)
+	fmt.Println("querySlice = ", conditions)
+	for _, d := range db.TbData {
+		if d.TableID != tableID {
+			continue
+		}
+		fmt.Println("dataMap = ", d.Data)
+		flag := true
+		for _, cond := range conditions {
+			status := CompareByOperator(d.Data[cond.Field].Value, cond.Value, cond.Operator)
+			if !status {
+				flag = false
+				break
+			}
+			fmt.Println("Yes, Equal !")
+		}
+		if flag && d.Data["ID"].Status == true {
+			result = append(result, ColumnDataToMap(d.Data))
 		}
 	}
 	return result
+}
+
+func (db *DataDB) UpdateData(tableID [32]byte, conditions []Condition, data map[string]string) {
+	var result []map[string]string
+	for _, d := range db.TbData {
+		if d.TableID != tableID {
+			continue
+		}
+		fmt.Println("dataMap = ", d.Data)
+		flag := true
+		for _, cond := range conditions {
+			status := CompareByOperator(d.Data[cond.Field].Value, cond.Value, cond.Operator)
+			if !status {
+				flag = false
+				break
+			}
+			fmt.Println("Yes, Equal !")
+		}
+		if flag && d.Data["ID"].Status == true {
+			for key, value := range data {
+				if _, found := d.Data[key]; found {
+					d.Data[key].Value = value
+					_, err := db.FileHandler.Seek(d.Data[key].Offset, io.SeekStart)
+					if err != nil {
+						panic(err)
+					}
+					y := make([]byte, d.Data[key].Length)
+					copy(y[:], value)
+					err = binary.Write(db.FileHandler, binary.LittleEndian, y)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+			result = append(result, ColumnDataToMap(d.Data))
+		}
+	}
+}
+
+func (db *DataDB) DeleteData(tableID [32]byte, conditions []Condition) {
+	for _, d := range db.TbData {
+		if d.TableID != tableID {
+			continue
+		}
+		fmt.Println("dataMap = ", d.Data)
+		flag := true
+		for _, cond := range conditions {
+			status := CompareByOperator(d.Data[cond.Field].Value, cond.Value, cond.Operator)
+			if !status {
+				flag = false
+				break
+			}
+			fmt.Println("Yes, Equal !")
+		}
+		if flag && d.Data["ID"].Status == true {
+			for _, d := range d.Data {
+				// 获取 status 的 offset
+				offset := d.Offset - 41
+				_, err := db.FileHandler.Seek(offset, io.SeekStart)
+				if err != nil {
+					panic(err)
+				}
+				var status = [1]byte{0}
+				err = binary.Write(db.FileHandler, binary.LittleEndian, status)
+				if err != nil {
+					panic(err)
+				}
+				d.Status = false
+			}
+		}
+	}
 }
 
 func (db *MetaDB) CreateDB(name string) *DBMetaData {

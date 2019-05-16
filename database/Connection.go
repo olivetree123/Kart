@@ -1,8 +1,8 @@
 package database
 
 import (
+	"Kart/utils"
 	"fmt"
-	"kart/utils"
 	"reflect"
 	"strings"
 	//"strings"
@@ -13,6 +13,12 @@ type Connection struct {
 	DBName       string
 	MetaDataBase *MetaDB
 	DataDataBase *DataDB
+}
+
+type Condition struct {
+	Field    string
+	Value    string
+	Operator string
 }
 
 func NewConnection(dbName string) *Connection {
@@ -73,21 +79,17 @@ func (conn *Connection) Insert(tableName string, data interface{}) {
 	conn.DataDataBase.AddData(table.ID, utils.StringToUUID(dataID), columns, data)
 }
 
-func (conn *Connection) Select(tableName string, condition string) []map[string]string {
-	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
-	if table == nil {
-		panic("Table does not exist.")
-	}
-	columns := conn.MetaDataBase.FindColumnByTable(table.ID)
-	queryMap := make(map[string]interface{})
+func (conn *Connection) ParseCondition(tableID [32]byte, condition string) []Condition {
+	var conditions []Condition
 	conds := strings.Split(condition, "and")
 	for _, cond := range conds {
 		cond = strings.TrimSpace(cond)
-		ds := strings.Split(cond, "=")
+		operator := FindOperator(cond)
+		ds := strings.Split(cond, operator)
 		if len(ds) != 2 {
 			panic("Invalid condition.")
 		}
-		column := conn.MetaDataBase.FindColumnByName(table.ID, ds[0])
+		column := conn.MetaDataBase.FindColumnByName(tableID, ds[0])
 		if column == nil {
 			panic("Invalid column.")
 		}
@@ -100,8 +102,48 @@ func (conn *Connection) Select(tableName string, condition string) []map[string]
 				value = "0"
 			}
 		}
-		//queryMap[utils.SliceToString(column.ID[:])] = value
-		queryMap[ds[0]] = value
+		c := Condition{
+			Field:    ds[0],
+			Value:    value,
+			Operator: operator,
+		}
+		conditions = append(conditions, c)
 	}
-	return conn.DataDataBase.SelectData(table.ID, columns, queryMap)
+	return conditions
+}
+
+func (conn *Connection) SelectOne(tableName string, condition string) map[string]string {
+	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
+	if table == nil {
+		panic("Table does not exist.")
+	}
+	conditions := conn.ParseCondition(table.ID, condition)
+	return conn.DataDataBase.SelectOneData(table.ID, conditions)
+}
+
+func (conn *Connection) Select(tableName string, condition string) []map[string]string {
+	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
+	if table == nil {
+		panic("Table does not exist.")
+	}
+	conditions := conn.ParseCondition(table.ID, condition)
+	return conn.DataDataBase.SelectData(table.ID, conditions)
+}
+
+func (conn *Connection) Update(tableName string, condition string, data map[string]string) {
+	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
+	if table == nil {
+		panic("Table does not exist.")
+	}
+	conditions := conn.ParseCondition(table.ID, condition)
+	conn.DataDataBase.UpdateData(table.ID, conditions, data)
+}
+
+func (conn *Connection) Delete(tableName string, condition string) {
+	table := conn.MetaDataBase.FindTableByName(conn.DBID, tableName)
+	if table == nil {
+		panic("Table does not exist.")
+	}
+	conditions := conn.ParseCondition(table.ID, condition)
+	conn.DataDataBase.DeleteData(table.ID, conditions)
 }

@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/binary"
 	"fmt"
 	"github.com/google/uuid"
 	"reflect"
@@ -74,7 +75,7 @@ func StructPtr2Map(obj interface{}) map[string]interface{} {
 	return data
 }
 
-func Struct2Map(obj interface{}) map[string]interface{} {
+func StructToMap(obj interface{}) map[string]interface{} {
 	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
 	var data = make(map[string]interface{})
@@ -82,6 +83,14 @@ func Struct2Map(obj interface{}) map[string]interface{} {
 		data[t.Field(i).Name] = v.Field(i).Interface()
 	}
 	return data
+}
+
+func MapToStruct(data map[string]interface{}, result interface{}) {
+	t := reflect.ValueOf(result).Elem()
+	for k, v := range data {
+		val := t.FieldByName(k)
+		val.Set(reflect.ValueOf(v))
+	}
 }
 
 func interface2String(inter interface{}) {
@@ -111,4 +120,17 @@ func GetLenFromTag(tag string) int {
 		}
 	}
 	return length
+}
+
+func SliceToInt(sl []byte) int {
+	var buf bytes.Buffer
+	_, err := buf.Write(sl)
+	if err != nil {
+		panic(err)
+	}
+	x, err := binary.ReadUvarint(&buf)
+	if err != nil {
+		panic(err)
+	}
+	return int(x)
 }

@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"Kart/config"
+	"Kart/global"
+	"Kart/utils"
 	"fmt"
-	"kart/config"
-	"kart/global"
-	"kart/utils"
 	"net/http"
 	"strings"
 )
@@ -12,7 +12,6 @@ import (
 // Auth 认证中间件
 func Auth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("method = ", r.Method)
 		if r.Method == "OPTIONS" {
 			h.ServeHTTP(w, r)
 			utils.JSONResponse(nil, w)

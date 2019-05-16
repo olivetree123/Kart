@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"Kart/database"
+	"Kart/storage"
 	"fmt"
-	"kart/database"
-	"kart/storage"
 	// "golang.org/x/image/bmp"
+	"Kart/global"
+	"Kart/utils"
 	"github.com/google/uuid"
-	"kart/global"
-	"kart/utils"
 	"net/http"
 )
 

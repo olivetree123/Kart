@@ -1,17 +1,17 @@
 package main
 
 import (
+	"Kart/global"
 	"fmt"
-	"kart/global"
-	//"kart/utils"
-	// "kart/storage"
+	//"Kart/utils"
+	// "Kart/storage"
 	// "os"
 	"github.com/gorilla/mux"
 	// "github.com/spf13/viper"
-	"kart/config"
-	"kart/handlers"
-	"kart/middleware"
-	"kart/storage"
+	"Kart/config"
+	"Kart/handlers"
+	"Kart/middleware"
+	"Kart/storage"
 	"log"
 	"net/http"
 	"time"
@@ -33,9 +33,9 @@ func main() {
 	//result := conn.Select("BucketModel", "Age=20")
 	//fmt.Println("result = ", result)
 	global.DBConn.CreateTable(storage.BucketModel{})
-	global.DBConn.CreateTable(storage.BlockModel{})
+	global.DBConn.CreateTable(storage.VolumeModel{})
 	global.DBConn.CreateTable(storage.ObjectModel{})
-	global.DBConn.CreateTable(storage.SectionModel{})
+	global.DBConn.CreateTable(storage.FreeSectionModel{})
 	global.DBConn.CreateTable(storage.UserModel{})
 	global.DBConn.CreateTable(storage.UserFileModel{})
 
@@ -44,6 +44,8 @@ func main() {
 	router.HandleFunc("/kart/user", handlers.AddUserHandler).Methods("post")
 	// API 登陆
 	router.HandleFunc("/kart/login", handlers.LoginHandler).Methods("post", "options")
+	// API 创建 Volume
+	router.HandleFunc("/kart/volume", handlers.AddVolumeHandler).Methods("post")
 	// API 创建 Bucket
 	router.HandleFunc("/kart/bucket", handlers.AddBucketHandler).Methods("post")
 	//router.Handle(

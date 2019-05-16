@@ -1,9 +1,9 @@
 package global
 
 import (
-	"kart/database"
-	//"kart/database"
-	"kart/storage"
+	"Kart/database"
+	//"Kart/database"
+	"Kart/storage"
 	"time"
 )
 

@@ -177,3 +177,11 @@ func (field BooleanField) GetValue() string {
 func (field IntegerField) GetValue() string {
 	return field.Value
 }
+
+func (field IntegerField) GetInt() int {
+	r, err := strconv.Atoi(field.GetValue())
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
