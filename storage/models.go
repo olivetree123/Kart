@@ -219,7 +219,6 @@ func CreateObject(f multipart.File, bucketName string) ObjectModel {
 	section := FreeSectionModelFromMap(sectionMap)
 
 	cond := fmt.Sprintf("ID=%s", section.VolumeID.GetValue())
-	fmt.Println("cond2 = ", cond)
 	volumeMap := global.DBConn.SelectOne("VolumeModel", cond)
 	volume := VolumeModelFromMap(volumeMap)
 	filePath := path.Join(volume.DirPath.GetValue(), "binData.db")

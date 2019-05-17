@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/nfnt/resize"
-	// "golang.org/x/image/bmp"
-	"Kart/global"
+
 	"image/gif"
 	"image/jpeg"
 	"image/png"
@@ -24,13 +23,14 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(fileHeader.Filename)
 	//userID := r.Header.Get("userID")
 	userID := "4220857c1585416391054f447f875e48"
 	fmt.Println("userID = ", userID)
 	fmt.Println("bucket = ", bucketName)
 	object := storage.CreateObject(fileObj, bucketName)
-	uf := storage.NewUserFileModel(object.ID.GetValue(), userID, fileHeader.Filename, int64(object.Size.GetInt()))
-	global.DBConn.Insert("UserFileModel", uf)
+	//uf := storage.NewUserFileModel(object.ID.GetValue(), userID, fileHeader.Filename, int64(object.Size.GetInt()))
+	//global.DBConn.Insert("UserFileModel", uf)
 	utils.JSONResponse(database.ModelToMap(object), w)
 
 }

@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -31,7 +30,6 @@ func CompareStringByLength(s1, s2 string) int {
 
 // CompareByOperator 根据 operator 比较两个字符串的大小，满足 operator 返回 True, 否则返回 False
 func CompareByOperator(s1 string, s2 string, operator string) bool {
-	fmt.Println("s1 = ", s1, "s2 = ", s2)
 	r := CompareStringByLength(s1, s2)
 	if r == 0 {
 		r = strings.Compare(s1, s2)
