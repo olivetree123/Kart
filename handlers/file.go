@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"Kart/database"
+	"Kart/global"
 	"Kart/storage"
 	"Kart/utils"
 	"bytes"
@@ -29,10 +30,9 @@ func AddFileHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("userID = ", userID)
 	fmt.Println("bucket = ", bucketName)
 	object := storage.CreateObject(fileObj, bucketName)
-	//uf := storage.NewUserFileModel(object.ID.GetValue(), userID, fileHeader.Filename, int64(object.Size.GetInt()))
-	//global.DBConn.Insert("UserFileModel", uf)
+	uf := storage.NewUserFileModel(object.ID.GetValue(), userID, fileHeader.Filename, int64(object.Size.GetInt()))
+	global.DBConn.Insert("UserFileModel", uf)
 	utils.JSONResponse(database.ModelToMap(object), w)
-
 }
 
 // ListFileHandler 获取文件列表
